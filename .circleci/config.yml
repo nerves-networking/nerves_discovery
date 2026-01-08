@@ -1,0 +1,81 @@
+# SPDX-FileCopyrightText: None
+# SPDX-License-Identifier: CC0-1.0
+
+version: 2.1
+
+latest: &latest
+  pattern: "^1.19.*-erlang-28.*$"
+
+tags: &tags
+  [
+    1.19.5-erlang-28.3-alpine-3.22.2,
+    1.18.3-erlang-27.3.4-alpine-3.22.2,
+    1.17.3-erlang-27.3.4-alpine-3.21.5,
+    1.16.3-erlang-26.2.5.11-alpine-3.21.3,
+    1.15.8-erlang-26.2.5.8-alpine-3.22.2
+  ]
+
+jobs:
+  check-license:
+    docker:
+      - image: fsfe/reuse:latest
+    steps:
+      - checkout
+      - run: reuse lint
+
+  build-test:
+    parameters:
+      tag:
+        type: string
+    docker:
+      - image: hexpm/elixir:<< parameters.tag >>
+    working_directory: ~/repo
+    environment:
+      LC_ALL: C.UTF-8
+    steps:
+      - run:
+          name: Install system dependencies
+          command: apk add --no-cache build-base util-linux
+      - checkout
+      - run:
+          name: Install hex and rebar
+          command: |
+            mix local.hex --force
+      - restore_cache:
+          keys:
+            - v1-mix-cache-<< parameters.tag >>-{{ checksum "mix.lock" }}
+      - run: mix deps.get
+      - run: MIX_ENV=test mix compile
+      - when:
+          condition:
+            matches: { <<: *latest, value: << parameters.tag >> }
+          steps:
+            - run: mix format --check-formatted
+            - run: mix deps.unlock --check-unused
+            - run: mix docs
+            - run: mix hex.build
+            - run: mix credo -a --strict
+            - run: mix dialyzer
+            - run: mix compile --warnings-as-errors
+            - run: MIX_ENV=test mix compile --warnings-as-errors
+      - save_cache:
+          key: v1-mix-cache-<< parameters.tag >>-{{ checksum "mix.lock" }}
+          paths:
+            - _build
+            - deps
+
+workflows:
+  checks:
+    jobs:
+      - check-license:
+          filters:
+            tags:
+              only: /.*/
+      - build-test:
+          name: << matrix.tag >>
+          matrix:
+            parameters:
+              tag: *tags
+          filters:
+            tags:
+              only: /.*/
