@@ -13,17 +13,21 @@
 Discover Nerves devices on your local network using mDNS service discovery
 
 This library provides a simple way to find Nerves devices on your network
-without needing to know their IP addresses. Devices that advertise the
-`_nerves-device._tcp` mDNS service report additional information like serial
-number and firmware information. It uses a heuristic to find Nerves devices that
-don't support this service by also looking at SSH advertisements.
+without needing to know their IP addresses. It finds Nerves devices in two ways:
 
-## Installation
+1. Devices that advertise SSH and have hostnames that start with "nerves-"
+2. Devices that advertise the `_nerves-device._tcp` mDNS service
+
+The second mechanism also supports advertising other attributes like serial numbers and firmware versions.
+
+> #### Nerves Tip {: .tip}
+>
+> If you already have a Nerves project using `:nerves v1.13.0+`, run `mix nerves.discover` on the command line to find devices. See below for advertising serial numbers and firmware information.
+
+## OS-specific installation
 
 This library uses native mDNS programs when available and backs off to a generic
-pure-Elixir implementation. The pure-Elixir method has limitations such as not
-being able to consult a cache, so the platform-specific methods should perform
-better.
+pure-Elixir implementation. The pure-Elixir method is slower.
 
 MacOS and Windows users don't need to do anything. Desktop Linux users should
 install the Avahi tools:
