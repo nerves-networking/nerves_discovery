@@ -30,6 +30,13 @@ defmodule NervesDiscoveryTest do
       nerves_lookup = """
       nerves-1234._nerves-device._tcp.local. can be reached at nerves-1234.local.:4000
       serial=ABC123
+      version=1.2.3
+      uuid=182c7114-4fa2-5faf-904b-cdc94e6845bb
+      architecture=aarch64
+      product=Product
+      description=A Description
+      platform=rpi5
+      something_extra=1248
       """
 
       nerves_getaddr = ssh_getaddr
@@ -55,9 +62,22 @@ defmodule NervesDiscoveryTest do
 
       results = NervesDiscovery.discover(method: :macos)
 
-      # Should deduplicate - same device found via both services
-      assert length(results) == 1
-      assert hd(results).name == "nerves-1234"
+      assert results == [
+               %{
+                 addresses: [{192, 168, 1, 100}],
+                 architecture: "aarch64",
+                 author: nil,
+                 description: "A Description",
+                 hostname: "nerves-1234.local",
+                 ip: "192.168.1.100",
+                 name: "nerves-1234",
+                 platform: "rpi5",
+                 product: "Product",
+                 serial: "ABC123",
+                 uuid: "182c7114-4fa2-5faf-904b-cdc94e6845bb",
+                 version: "1.2.3"
+               }
+             ]
     end
   end
 end

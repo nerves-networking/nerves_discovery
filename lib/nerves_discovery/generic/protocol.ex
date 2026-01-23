@@ -59,7 +59,7 @@ defmodule NervesDiscovery.Generic.Protocol do
           %{
             name: name,
             hostname: host || "#{name}.local",
-            ip: List.first(addrs),
+            addresses: addrs,
             serial: Map.get(txt, "serial"),
             version: Map.get(txt, "version"),
             product: Map.get(txt, "product"),
@@ -140,8 +140,7 @@ defmodule NervesDiscovery.Generic.Protocol do
     {new_acc, context}
   end
 
-  defp process_a(data, domain, acc, context) do
-    ip = :inet.ntoa(data) |> to_string()
+  defp process_a(ip, domain, acc, context) do
     hostname = if domain == "" and context.srv, do: context.srv, else: domain
 
     new_acc =

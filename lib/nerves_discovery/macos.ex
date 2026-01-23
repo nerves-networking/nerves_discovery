@@ -40,27 +40,41 @@ defmodule NervesDiscovery.MacOS do
     {output, _} =
       System.cmd("timeout", ["0.2", "dns-sd", "-L", name, service], stderr_to_stdout: true)
 
-    device =
-      case Regex.run(~r/can be reached at ([^\s:]+):/, output) do
-        [_, hostname] ->
-          hostname = String.trim_trailing(hostname, ".")
-
-          {ip_output, _} =
-            System.cmd("timeout", ["0.2", "dns-sd", "-G", "v4", hostname], stderr_to_stdout: true)
-
-          ip =
-            case Regex.run(~r/Add\s+\S+\s+\d+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)/, ip_output) do
-              [_, addr] -> addr
-              _ -> nil
-            end
-
-          %{name: name, hostname: hostname, ip: ip}
-
-        _ ->
-          %{name: name}
-      end
+    device = build_device(name, output)
 
     if service == "_nerves-device._tcp", do: parse_txt_records(output, device), else: device
+  end
+
+  defp build_device(name, output) do
+    case Regex.run(~r/can be reached at ([^\s:]+):/, output) do
+      [_, hostname] ->
+        hostname = String.trim_trailing(hostname, ".")
+        addresses = resolve_addresses(hostname)
+        %{name: name, hostname: hostname, addresses: addresses}
+
+      _ ->
+        %{name: name}
+    end
+  end
+
+  defp resolve_addresses(hostname) do
+    {ip_output, _} =
+      System.cmd("timeout", ["1.0", "dns-sd", "-G", "v4", hostname], stderr_to_stdout: true)
+
+    ip_output
+    |> String.split("\n")
+    |> Enum.flat_map(fn line ->
+      case Regex.run(~r/Add\s+\S+\s+\d+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)/, line) do
+        [_, addr] -> [parse_address!(addr)]
+        _ -> []
+      end
+    end)
+    |> Enum.uniq()
+  end
+
+  defp parse_address!(string) do
+    {:ok, ip} = string |> String.to_charlist() |> :inet.parse_address()
+    ip
   end
 
   defp parse_txt_records(output, device) do

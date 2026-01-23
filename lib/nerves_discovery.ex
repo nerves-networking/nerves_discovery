@@ -18,8 +18,9 @@ defmodule NervesDiscovery do
   Information about each found Nerves device
 
   * `:name` - name of the Nerves device
-  * `:hostname` - hostname o the device (usually the name with `.local`)
-  * `:ip` - the first IP address of the device
+  * `:hostname` - hostname of the device (usually the name with `.local`)
+  * `:addresses` - list of IP addresses of the device in `:inet.ip_address/0` tuples
+  * `:ip` - (DEPRECATED) the first IP address of the device as a string - use `:addresses` instead
   * `:serial` - the device's serial number if included in the advertisement
   * `:version` - the device's firmware version if included in the advertisement
   * `:product` - the device's product if included in the advertisement
@@ -32,7 +33,8 @@ defmodule NervesDiscovery do
   @type result() :: %{
           name: String.t(),
           hostname: String.t(),
-          ip: String.t(),
+          addresses: [:inet.ip_address()],
+          ip: String.t() | nil,
           serial: String.t() | nil,
           version: String.t() | nil,
           product: String.t() | nil,
@@ -53,7 +55,7 @@ defmodule NervesDiscovery do
   ## Examples
 
       iex> NervesDiscovery.discover()
-      [%{name: "nerves-1234", hostname: "nerves-1234.local", ip: "192.168.1.100"}]
+      [%{name: "nerves-1234", hostname: "nerves-1234.local", addresses: [{192, 168, 1, 100}]}]
   """
   @spec discover(options()) :: [result()]
   def discover(opts \\ []) do
@@ -65,8 +67,7 @@ defmodule NervesDiscovery do
       Task.async(fn -> discover.("_nerves-device._tcp", timeout) end)
     ]
     |> Task.await_many(timeout + 1000)
-    |> then(fn [ssh, nerves] -> nerves ++ ssh end)
-    |> Enum.uniq_by(fn device -> Map.get(device, :name) end)
+    |> then(fn [ssh, nerves] -> merge_results(nerves ++ ssh) end)
   end
 
   defp filter_nerves(results) do
@@ -89,4 +90,45 @@ defmodule NervesDiscovery do
   defp discover_fun(:macos), do: &NervesDiscovery.MacOS.discover_service/2
   defp discover_fun(:avahi), do: &NervesDiscovery.Avahi.discover_service/2
   defp discover_fun(:generic), do: &NervesDiscovery.Generic.discover_service/2
+
+  defp merge_results(devices) do
+    devices
+    |> Enum.reduce(%{}, fn device, acc ->
+      Map.update(acc, device.name, device, &merge_device(&1, device))
+    end)
+    |> Map.values()
+    |> Enum.map(&finalize_device/1)
+  end
+
+  defp finalize_device(device) do
+    addresses = Enum.uniq(device.addresses)
+    ip = addresses |> List.first() |> :inet.ntoa() |> to_string()
+
+    device
+    |> Map.put(:addresses, addresses)
+    |> Map.put(:ip, ip)
+  end
+
+  defp merge_device(existing, incoming) do
+    existing
+    |> Map.put(:addresses, existing.addresses ++ incoming.addresses)
+    |> merge_txt_fields(incoming)
+  end
+
+  defp merge_txt_fields(existing, incoming) do
+    txt_fields = [
+      :serial,
+      :version,
+      :product,
+      :description,
+      :platform,
+      :architecture,
+      :author,
+      :uuid
+    ]
+
+    Enum.reduce(txt_fields, existing, fn field, acc ->
+      Map.put(acc, field, acc[field] || incoming[field])
+    end)
+  end
 end
