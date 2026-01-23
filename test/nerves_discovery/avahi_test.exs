@@ -24,13 +24,14 @@ defmodule NervesDiscovery.AvahiTest do
 
     device1 = Enum.find(results, &(&1.name == "nerves-abcd"))
     assert device1.hostname == "nerves-abcd.local"
-    assert device1.ip == "192.168.1.50"
+    assert device1.addresses == [{192, 168, 1, 50}]
     assert device1.serial == "XYZ789"
     assert device1.version == "2.1.0"
     assert device1.product == "bbb"
     assert device1.platform == "linux"
 
     device2 = Enum.find(results, &(&1.name == "nerves-efgh"))
+    assert device2.addresses == [{192, 168, 1, 51}]
     assert device2.serial == "DEF456"
     assert device2.version == "2.0.0"
   end

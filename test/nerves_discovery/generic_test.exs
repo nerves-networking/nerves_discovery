@@ -72,7 +72,7 @@ defmodule NervesDiscovery.GenericTest do
 
       assert acc.instances["nerves-1234"] == ["nerves-1234"]
       assert acc.srvs["nerves-1234"] == {"nerves-1234.local", 4000}
-      assert MapSet.member?(acc.addrs_v4["nerves-1234.local"], "192.168.1.100")
+      assert MapSet.member?(acc.addrs_v4["nerves-1234.local"], {192, 168, 1, 100})
 
       assert acc.txts["nerves-1234"] == %{
                "serial" => "ABC123",
@@ -124,7 +124,7 @@ defmodule NervesDiscovery.GenericTest do
       acc = %{
         instances: %{"nerves-1234" => ["nerves-1234"]},
         srvs: %{"nerves-1234" => {"nerves-1234.local", 4000}},
-        addrs_v4: %{"nerves-1234.local" => MapSet.new(["192.168.1.100"])},
+        addrs_v4: %{"nerves-1234.local" => MapSet.new([{192, 168, 1, 100}])},
         txts: %{
           "nerves-1234" => %{
             "serial" => "ABC123",
@@ -139,7 +139,7 @@ defmodule NervesDiscovery.GenericTest do
 
       assert device.name == "nerves-1234"
       assert device.hostname == "nerves-1234.local"
-      assert device.ip == "192.168.1.100"
+      assert device.addresses == [{192, 168, 1, 100}]
       assert device.serial == "ABC123"
       assert device.version == "1.0.0"
       assert device.product == "rpi4"

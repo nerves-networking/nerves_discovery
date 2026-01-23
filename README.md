@@ -52,7 +52,7 @@ iex> NervesDiscovery.discover()
     name: "nerves-8465",
     serial: "55e77bfdd5030316",
     version: "0.2.1",
-    ip: "192.168.7.48",
+    addresses: [{192, 168, 7, 48}],
     description: "",
     author: "The Nerves Team",
     product: "kiosk_demo",
@@ -63,7 +63,7 @@ iex> NervesDiscovery.discover()
   },
   %{
     name: "nerves-0316",
-    ip: "192.168.7.128",
+    addresses: [{192, 168, 7, 128}],
     hostname: "nerves-0316.local",
   }
 ]

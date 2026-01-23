@@ -19,18 +19,56 @@ defmodule NervesDiscovery.Avahi do
 
     output
     |> String.split("\n")
-    |> Enum.flat_map(fn line ->
-      # Format with -p flag: "=;interface;IPv4;name;type;local;hostname;ip;port;txt..."
-      case String.split(line, ";") do
-        ["=", _interface, "IPv4", name, _type, "local", hostname, ip, _port | txt_parts] ->
-          device = %{name: name, hostname: hostname, ip: ip}
-          # TXT records come as space-separated quoted strings in one field
-          txt_string = List.first(txt_parts, "")
-          txt_records = parse_txt_string(txt_string)
-          [parse_txt_records(device, txt_records)]
+    |> Enum.reduce(%{}, fn line, acc ->
+      case parse_line(line) do
+        nil -> acc
+        device -> Map.update(acc, device.name, device, &merge_devices(&1, device))
+      end
+    end)
+    |> Map.values()
+  end
 
-        _ ->
-          []
+  defp parse_line(line) do
+    # Format with -p flag: "=;interface;IPv4;name;type;local;hostname;ip;port;txt..."
+    case String.split(line, ";") do
+      ["=", _interface, "IPv4", name, _type, "local", hostname, ip_string, _port | txt_parts] ->
+        {:ok, ip} = ip_string |> String.to_charlist() |> :inet.parse_address()
+        device = %{name: name, hostname: hostname, addresses: [ip]}
+        # TXT records come as space-separated quoted strings in one field
+        txt_string = List.first(txt_parts, "")
+        txt_records = parse_txt_string(txt_string)
+        parse_txt_records(device, txt_records)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp merge_devices(existing, incoming) do
+    merged_addresses = Enum.uniq(existing.addresses ++ incoming.addresses)
+
+    existing
+    |> Map.put(:addresses, merged_addresses)
+    |> merge_txt_fields(incoming)
+  end
+
+  defp merge_txt_fields(existing, incoming) do
+    txt_fields = [
+      :serial,
+      :version,
+      :product,
+      :description,
+      :platform,
+      :architecture,
+      :author,
+      :uuid
+    ]
+
+    Enum.reduce(txt_fields, existing, fn field, acc ->
+      case {Map.get(acc, field), Map.get(incoming, field)} do
+        {nil, val} when not is_nil(val) -> Map.put(acc, field, val)
+        {"", val} when val not in [nil, ""] -> Map.put(acc, field, val)
+        _ -> acc
       end
     end)
   end
