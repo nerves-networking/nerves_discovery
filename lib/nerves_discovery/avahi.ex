@@ -13,7 +13,9 @@ defmodule NervesDiscovery.Avahi do
     timeout_secs = max(div(timeout, 1000), 1)
 
     {output, _} =
-      System.shell("timeout #{timeout_secs} avahi-browse -rtp #{service} 2>&1 || true")
+      System.cmd("timeout", [to_string(timeout_secs), "avahi-browse", "-rtp", service],
+        stderr_to_stdout: true
+      )
 
     output
     |> String.split("\n")

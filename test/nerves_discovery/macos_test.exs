@@ -39,21 +39,21 @@ defmodule NervesDiscovery.MacOSTest do
     12:30:47.456  Add     2  4 nerves-5678.local.                     192.168.1.101                                120
     """
 
-    stub(System, :shell, fn cmd ->
-      cond do
-        cmd =~ "dns-sd -B _ssh._tcp" ->
+    stub(System, :cmd, fn cmd, args, _opts ->
+      case {cmd, args} do
+        {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
           {browse_output, 0}
 
-        cmd =~ "dns-sd -L nerves-1234" ->
+        {"timeout", [_, "dns-sd", "-L", "nerves-1234", "_ssh._tcp"]} ->
           {lookup_output_1234, 0}
 
-        cmd =~ "dns-sd -L nerves-5678" ->
+        {"timeout", [_, "dns-sd", "-L", "nerves-5678", "_ssh._tcp"]} ->
           {lookup_output_5678, 0}
 
-        cmd =~ "dns-sd -G v4 nerves-1234.local" ->
+        {"timeout", [_, "dns-sd", "-G", "v4", "nerves-1234.local"]} ->
           {getaddr_output_1234, 0}
 
-        cmd =~ "dns-sd -G v4 nerves-5678.local" ->
+        {"timeout", [_, "dns-sd", "-G", "v4", "nerves-5678.local"]} ->
           {getaddr_output_5678, 0}
       end
     end)

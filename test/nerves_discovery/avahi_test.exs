@@ -12,8 +12,9 @@ defmodule NervesDiscovery.AvahiTest do
     =;eth0;IPv4;nerves-efgh;_nerves-device._tcp;local;nerves-efgh.local;192.168.1.51;4000;"serial=DEF456" "version=2.0.0"
     """
 
-    stub(System, :shell, fn cmd ->
-      assert cmd =~ "avahi-browse -rtp _nerves-device._tcp"
+    stub(System, :cmd, fn "timeout",
+                          [_timeout, "avahi-browse", "-rtp", "_nerves-device._tcp"],
+                          _opts ->
       {avahi_output, 0}
     end)
 
@@ -35,7 +36,9 @@ defmodule NervesDiscovery.AvahiTest do
   end
 
   test "handles empty output gracefully" do
-    stub(System, :shell, fn _cmd -> {"", 0} end)
+    stub(System, :cmd, fn "timeout", [_timeout, "avahi-browse", "-rtp", "_ssh._tcp"], _opts ->
+      {"", 0}
+    end)
 
     results = NervesDiscovery.Avahi.discover_service("_ssh._tcp", 5000)
 

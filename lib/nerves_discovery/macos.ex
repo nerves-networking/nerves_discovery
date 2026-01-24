@@ -11,7 +11,11 @@ defmodule NervesDiscovery.MacOS do
   @spec discover_service(String.t(), non_neg_integer()) :: [map()]
   def discover_service(service, timeout) do
     timeout_secs = min(div(timeout, 1000), 1)
-    {output, _} = System.shell("timeout #{timeout_secs} dns-sd -B #{service} 2>&1 || true")
+
+    {output, _} =
+      System.cmd("timeout", [to_string(timeout_secs), "dns-sd", "-B", service],
+        stderr_to_stdout: true
+      )
 
     output
     |> String.split("\n")
@@ -33,13 +37,16 @@ defmodule NervesDiscovery.MacOS do
   end
 
   defp resolve_device(name, service) do
-    {output, _} = System.shell("timeout 0.2 dns-sd -L #{name} #{service} 2>&1 || true")
+    {output, _} =
+      System.cmd("timeout", ["0.2", "dns-sd", "-L", name, service], stderr_to_stdout: true)
 
     device =
       case Regex.run(~r/can be reached at ([^\s:]+):/, output) do
         [_, hostname] ->
           hostname = String.trim_trailing(hostname, ".")
-          {ip_output, _} = System.shell("timeout 0.2 dns-sd -G v4 #{hostname} 2>&1 || true")
+
+          {ip_output, _} =
+            System.cmd("timeout", ["0.2", "dns-sd", "-G", "v4", hostname], stderr_to_stdout: true)
 
           ip =
             case Regex.run(~r/Add\s+\S+\s+\d+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)/, ip_output) do

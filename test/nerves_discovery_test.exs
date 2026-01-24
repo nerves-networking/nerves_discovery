@@ -34,21 +34,21 @@ defmodule NervesDiscoveryTest do
 
       nerves_getaddr = ssh_getaddr
 
-      stub(System, :shell, fn cmd ->
-        cond do
-          cmd =~ "dns-sd -B _ssh._tcp" ->
+      stub(System, :cmd, fn cmd, args, _opts ->
+        case {cmd, args} do
+          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
             {ssh_browse, 0}
 
-          cmd =~ "dns-sd -B _nerves-device._tcp" ->
+          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
             {nerves_browse, 0}
 
-          cmd =~ "dns-sd -L nerves-1234 _ssh._tcp" ->
+          {"timeout", [_, "dns-sd", "-L", "nerves-1234", "_ssh._tcp"]} ->
             {ssh_lookup, 0}
 
-          cmd =~ "dns-sd -L nerves-1234 _nerves-device._tcp" ->
+          {"timeout", [_, "dns-sd", "-L", "nerves-1234", "_nerves-device._tcp"]} ->
             {nerves_lookup, 0}
 
-          cmd =~ "dns-sd -G v4 nerves-1234.local" ->
+          {"timeout", [_, "dns-sd", "-G", "v4", "nerves-1234.local"]} ->
             {nerves_getaddr, 0}
         end
       end)
