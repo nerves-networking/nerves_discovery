@@ -19,7 +19,7 @@ defmodule NervesDiscovery do
 
   * `:name` - name of the Nerves device
   * `:hostname` - hostname of the device (usually the name with `.local`)
-  * `:addresses` - list of IP addresses of the device in `:inet.ip_address/0` tuples
+  * `:addresses` - list of IP addresses of the device in `t::inet.ip_address/0` tuples
   * `:ip` - (DEPRECATED) the first IP address of the device as a string - use `:addresses` instead
   * `:serial` - the device's serial number if included in the advertisement
   * `:version` - the device's firmware version if included in the advertisement
