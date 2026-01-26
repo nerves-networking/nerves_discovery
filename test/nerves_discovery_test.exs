@@ -111,7 +111,7 @@ defmodule NervesDiscoveryTest do
       12:30:46.456  Add     2  4 nerves-5678.local.                     192.168.1.102                                120
       """
 
-      # Track number of getaddr calls to return different addresses
+      # Counter to track calls and return different addresses for SSH vs nerves-device service
       getaddr_count = :counters.new(1, [:atomics])
 
       stub(System, :cmd, fn cmd, args, _opts ->
@@ -129,7 +129,8 @@ defmodule NervesDiscoveryTest do
             {nerves_lookup, 0}
 
           {"timeout", [_, "dns-sd", "-G", "v4", "nerves-5678.local"]} ->
-            # Return different addresses on first vs second call
+            # First call (SSH service) returns 192.168.1.101
+            # Second call (nerves-device service) returns 192.168.1.102
             count = :counters.get(getaddr_count, 1)
             :counters.add(getaddr_count, 1, 1)
 
