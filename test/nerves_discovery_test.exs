@@ -148,7 +148,6 @@ defmodule NervesDiscoveryTest do
       assert device.name == "nerves-5678"
       assert device.hostname == "nerves-5678.local"
       # Addresses should be merged and deduplicated
-      assert length(device.addresses) == 2
       assert Enum.sort(device.addresses) == [{192, 168, 1, 101}, {192, 168, 1, 102}]
       assert device.serial == "DEF456"
       assert device.version == "2.0.0"
