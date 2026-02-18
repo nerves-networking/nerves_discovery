@@ -7,6 +7,13 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.2
+
+* Fixes
+  * Handle spaces in instance names on MacOS and Avahi
+  * Always return maps with all fields on MacOS so that it behaves the same as
+    the generic and Avahi resolvers
+
 ## v0.1.1
 
 * New features
