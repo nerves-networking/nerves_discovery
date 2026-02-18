@@ -64,6 +64,14 @@ defmodule NervesDiscovery.MacOSTest do
     assert Enum.any?(results, &(&1.name == "nerves-1234"))
     device = Enum.find(results, &(&1.name == "nerves-1234"))
     assert device.addresses == [{192, 168, 1, 100}]
-    assert Enum.any?(results, &(&1.hostname == "nerves-1234.local"))
+    assert device.hostname == "nerves-1234.local"
+    assert device.serial == nil
+    assert device.version == nil
+    assert device.description == nil
+    assert device.author == nil
+    assert device.product == nil
+    assert device.platform == nil
+    assert device.architecture == nil
+    assert device.uuid == nil
   end
 end

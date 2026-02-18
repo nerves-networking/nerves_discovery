@@ -50,11 +50,27 @@ defmodule NervesDiscovery.MacOS do
       [_, hostname] ->
         hostname = String.trim_trailing(hostname, ".")
         addresses = resolve_addresses(hostname)
-        %{name: name, hostname: hostname, addresses: addresses}
+        new_device(name, hostname, addresses)
 
       _ ->
-        %{name: name, hostname: name, addresses: []}
+        new_device(name, name, [])
     end
+  end
+
+  defp new_device(name, hostname, addresses) do
+    %{
+      name: name,
+      hostname: hostname,
+      addresses: addresses,
+      serial: nil,
+      version: nil,
+      product: nil,
+      description: nil,
+      platform: nil,
+      architecture: nil,
+      author: nil,
+      uuid: nil
+    }
   end
 
   defp resolve_addresses(hostname) do
