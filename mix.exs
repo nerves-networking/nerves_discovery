@@ -77,7 +77,7 @@ defmodule NervesDiscovery.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false},
-      {:mimic, "~> 1.7", only: :test}
+      {:mimic, "~> 2.3", only: :test}
     ]
   end
 end
