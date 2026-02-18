@@ -13,7 +13,7 @@ defmodule NervesDiscovery.MacOSTest do
     12:30:45.123  ...STARTING...
     Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
     12:30:45.456  Add        2   4 local.               _ssh._tcp.           nerves-1234
-    12:30:45.789  Add        2   4 local.               _ssh._tcp.           nerves-5678
+    12:30:45.789  Add        2   4 local.               _ssh._tcp.           nerves spaces
     """
 
     lookup_output_1234 = """
@@ -29,7 +29,7 @@ defmodule NervesDiscovery.MacOSTest do
     """
 
     lookup_output_5678 = """
-    nerves-5678._ssh._tcp.local. can be reached at nerves-5678.local.:22
+    nerves spaces._ssh._tcp.local. can be reached at nerves-5678.local.:22
     """
 
     getaddr_output_5678 = """
@@ -47,7 +47,7 @@ defmodule NervesDiscovery.MacOSTest do
         {"timeout", [_, "dns-sd", "-L", "nerves-1234", "_ssh._tcp"]} ->
           {lookup_output_1234, 0}
 
-        {"timeout", [_, "dns-sd", "-L", "nerves-5678", "_ssh._tcp"]} ->
+        {"timeout", [_, "dns-sd", "-L", "nerves spaces", "_ssh._tcp"]} ->
           {lookup_output_5678, 0}
 
         {"timeout", [_, "dns-sd", "-G", "v4", "nerves-1234.local"]} ->

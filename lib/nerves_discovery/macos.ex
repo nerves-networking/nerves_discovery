@@ -20,8 +20,8 @@ defmodule NervesDiscovery.MacOS do
     output
     |> String.split("\n")
     |> Enum.flat_map(fn line ->
-      case Regex.run(~r/Add\s+\d+\s+\d+\s+\S+\s+#{Regex.escape(service)}\.\s+(\S+)/, line) do
-        [_, name] -> [String.trim_trailing(name, ".")]
+      case Regex.run(~r/Add\s+\d+\s+\d+\s+\S+\s+#{Regex.escape(service)}\.\s+(.+)$/, line) do
+        [_, name] -> [String.trim(name)]
         _ -> []
       end
     end)
