@@ -71,7 +71,10 @@ defmodule NervesDiscovery do
   end
 
   defp filter_nerves(results) do
-    Enum.filter(results, &String.starts_with?(&1.name, "nerves-"))
+    Enum.filter(results, fn r ->
+      String.starts_with?(r.hostname, "nerves-") ||
+        String.starts_with?(r.name, ["nerves", "Nerves"])
+    end)
   end
 
   defp discover_fun(:auto) do
