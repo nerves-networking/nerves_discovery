@@ -45,4 +45,21 @@ defmodule NervesDiscovery.AvahiTest do
 
     assert results == []
   end
+
+  test "decodes escape sequences in service names" do
+    avahi_output =
+      "=;wlan0;IPv4;Nerves\\032Livebook;_nerves-device._tcp;local;nerves-livebook.local;192.168.1.52;4000;\"version=2.2.0\"\n"
+
+    stub(System, :cmd, fn "timeout",
+                          [_timeout, "avahi-browse", "-rtp", "_nerves-device._tcp"],
+                          _opts ->
+      {avahi_output, 0}
+    end)
+
+    results = NervesDiscovery.Avahi.discover_service("_nerves-device._tcp", 5000)
+
+    assert [%{name: "Nerves Livebook"} = device] = results
+    assert device.addresses == [{192, 168, 1, 52}]
+    assert device.version == "2.2.0"
+  end
 end

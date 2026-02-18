@@ -33,7 +33,7 @@ defmodule NervesDiscovery.Avahi do
     case String.split(line, ";") do
       ["=", _interface, "IPv4", name, _type, "local", hostname, ip_string, _port | txt_parts] ->
         {:ok, ip} = ip_string |> String.to_charlist() |> :inet.parse_address()
-        device = %{name: name, hostname: hostname, addresses: [ip]}
+        device = %{name: unescape_avahi_string(name), hostname: hostname, addresses: [ip]}
         # TXT records come as space-separated quoted strings in one field
         txt_string = List.first(txt_parts, "")
         txt_records = parse_txt_string(txt_string)
@@ -108,6 +108,12 @@ defmodule NervesDiscovery.Avahi do
       if String.starts_with?(part, "#{field_str}=") do
         String.trim_leading(part, "#{field_str}=")
       end
+    end)
+  end
+
+  defp unescape_avahi_string(value) do
+    Regex.replace(~r/\\([0-9]{3})/, value, fn _match, decimal ->
+      <<String.to_integer(decimal)>>
     end)
   end
 end
