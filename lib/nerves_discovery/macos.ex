@@ -53,7 +53,7 @@ defmodule NervesDiscovery.MacOS do
         %{name: name, hostname: hostname, addresses: addresses}
 
       _ ->
-        %{name: name}
+        %{name: name, hostname: name, addresses: []}
     end
   end
 
