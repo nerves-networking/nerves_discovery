@@ -7,6 +7,11 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.3
+
+* Fixes
+  * Fix crash when no network available (@gworkman)
+
 ## v0.1.2
 
 * Fixes
