@@ -24,10 +24,15 @@ defmodule NervesDiscovery.Generic do
 
     try do
       packet = Protocol.create_query(service_name)
-      :ok = :gen_udp.send(sock, @mcast_ip, @mdns_port, packet)
 
-      acc = collect_results(sock, timeout, service_name)
-      Protocol.assemble_results(acc)
+      case :gen_udp.send(sock, @mcast_ip, @mdns_port, packet) do
+        :ok ->
+          acc = collect_results(sock, timeout, service_name)
+          Protocol.assemble_results(acc)
+
+        {:error, :enetunreach} ->
+          []
+      end
     after
       :gen_udp.close(sock)
     end
