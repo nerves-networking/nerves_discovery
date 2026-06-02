@@ -6,7 +6,7 @@
 # NervesDiscovery
 
 [![Hex version](https://img.shields.io/hexpm/v/nerves_discovery.svg "Hex version")](https://hex.pm/packages/nerves_discovery)
-[![API docs](https://img.shields.io/hexpm/v/nerves_discovery.svg?label=hexdocs "API docs")](https://hexdocs.pm/nerves_discovery/NervesDiscovery.html)
+[![API docs](https://img.shields.io/hexpm/v/nerves_discovery.svg?label=hexdocs "API docs")](https://nerves-discovery.hexdocs.pm/NervesDiscovery.html)
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/nerves-networking/nerves_discovery/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/nerves-networking/nerves_discovery/tree/main)
 [![REUSE status](https://api.reuse.software/badge/github.com/nerves-networking/nerves_discovery)](https://api.reuse.software/info/github.com/nerves-networking/nerves_discovery)
 
