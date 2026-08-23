@@ -7,6 +7,12 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.4
+
+* Fixes
+  * Fix wait calculation on macOS. Previously waits <1 second would result in
+    timeout of 0 which was infinite.
+
 ## v0.1.3
 
 * Fixes
