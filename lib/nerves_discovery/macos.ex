@@ -10,7 +10,7 @@ defmodule NervesDiscovery.MacOS do
   """
   @spec discover_service(String.t(), non_neg_integer()) :: [map()]
   def discover_service(service, timeout) do
-    timeout_secs = min(div(timeout, 1000), 1)
+    timeout_secs = max(div(timeout, 1000), 1)
 
     {output, _} =
       System.cmd("timeout", [to_string(timeout_secs), "dns-sd", "-B", service],
