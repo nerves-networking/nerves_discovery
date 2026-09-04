@@ -10,7 +10,10 @@ defmodule NervesDiscovery.MacOS do
   """
   @spec discover_service(String.t(), non_neg_integer()) :: [map()]
   def discover_service(service, timeout) do
-    timeout_secs = max(div(timeout, 1000), 1)
+    # Use half the time to scan for devices, but force it to be between
+    # 100ms and 1s. The max time to wait is arbitrary. This should be
+    # rewritten to stream results.
+    timeout_secs = (timeout / 2 / 1000) |> max(0.1) |> min(1)
 
     {output, _} =
       System.cmd("timeout", [to_string(timeout_secs), "dns-sd", "-B", service],
@@ -27,7 +30,7 @@ defmodule NervesDiscovery.MacOS do
     end)
     |> Task.async_stream(&resolve_device(&1, service),
       max_concurrency: 10,
-      timeout: div(timeout, 1000) * 1000,
+      timeout: 1500,
       on_timeout: :kill_task
     )
     |> Enum.flat_map(fn
