@@ -7,6 +7,11 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.5
+
+* Fixes
+  * Fix regression introduced by the timeout fix in v0.1.4 on macOS
+
 ## v0.1.4
 
 * Fixes
