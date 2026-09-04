@@ -41,14 +41,13 @@ defmodule NervesDiscoveryTest do
 
       nerves_getaddr = ssh_getaddr
 
+      stub_browsers(%{
+        "_ssh._tcp" => ssh_browse,
+        "_nerves-device._tcp" => nerves_browse
+      })
+
       stub(System, :cmd, fn cmd, args, _opts ->
         case {cmd, args} do
-          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
-            {ssh_browse, 0}
-
-          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
-            {nerves_browse, 0}
-
           {"timeout", [_, "dns-sd", "-L", "nerves-1234", "_ssh._tcp"]} ->
             {ssh_lookup, 0}
 
@@ -114,14 +113,13 @@ defmodule NervesDiscoveryTest do
       # Counter to track calls and return different addresses for SSH vs nerves-device service
       getaddr_count = :counters.new(1, [:atomics])
 
+      stub_browsers(%{
+        "_ssh._tcp" => ssh_browse,
+        "_nerves-device._tcp" => nerves_browse
+      })
+
       stub(System, :cmd, fn cmd, args, _opts ->
         case {cmd, args} do
-          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
-            {ssh_browse, 0}
-
-          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
-            {nerves_browse, 0}
-
           {"timeout", [_, "dns-sd", "-L", "nerves-5678", "_ssh._tcp"]} ->
             {ssh_lookup, 0}
 
@@ -180,14 +178,13 @@ defmodule NervesDiscoveryTest do
       12:30:46.456  Add     2  4 nerves-9999.local.                     10.0.0.50                                    120
       """
 
+      stub_browsers(%{
+        "_ssh._tcp" => ssh_browse,
+        "_nerves-device._tcp" => nerves_browse
+      })
+
       stub(System, :cmd, fn cmd, args, _opts ->
         case {cmd, args} do
-          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
-            {ssh_browse, 0}
-
-          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
-            {nerves_browse, 0}
-
           {"timeout", [_, "dns-sd", "-L", "nerves-9999", "_ssh._tcp"]} ->
             {ssh_lookup, 0}
 
@@ -207,5 +204,19 @@ defmodule NervesDiscoveryTest do
       assert device.addresses == [{10, 0, 0, 50}]
       assert device.serial == "GHI789"
     end
+  end
+
+  defp stub_browsers(outputs) do
+    stub(NervesDiscovery.MacOS.Browser, :open, fn service, _timeout ->
+      browser = make_ref()
+
+      outputs
+      |> Map.fetch!(service)
+      |> String.split("\n", trim: true)
+      |> Enum.each(&send(self(), {browser, {:data, {:eol, &1}}}))
+
+      send(self(), {browser, {:exit_status, 0}})
+      browser
+    end)
   end
 end

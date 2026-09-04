@@ -66,7 +66,7 @@ defmodule NervesDiscovery do
       Task.async(fn -> discover.("_ssh._tcp", timeout) |> filter_nerves() end),
       Task.async(fn -> discover.("_nerves-device._tcp", timeout) end)
     ]
-    |> Task.await_many(timeout + 1000)
+    |> Task.await_many(timeout + 1500)
     |> then(fn [ssh, nerves] -> merge_devices(nerves ++ ssh) end)
   end
 

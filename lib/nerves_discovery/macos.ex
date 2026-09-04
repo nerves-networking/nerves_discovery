@@ -5,35 +5,110 @@
 defmodule NervesDiscovery.MacOS do
   @moduledoc false
 
+  defmodule Browser do
+    @moduledoc false
+
+    @idle_timeout 500
+
+    @spec start(String.t(), non_neg_integer()) :: {reference(), reference()}
+    def start(service, timeout) do
+      receiver = self()
+      tag = make_ref()
+
+      {:ok, pid} = Task.start(fn -> run(receiver, tag, service, timeout) end)
+      {Process.monitor(pid), tag}
+    end
+
+    @doc false
+    @spec open(String.t(), non_neg_integer()) :: port()
+    def open(service, timeout) do
+      timeout_executable =
+        System.find_executable("timeout") || raise "timeout executable not found"
+
+      Port.open(
+        {:spawn_executable, timeout_executable},
+        [
+          :binary,
+          :exit_status,
+          :stderr_to_stdout,
+          {:args, [timeout_arg(timeout), "dns-sd", "-B", service]},
+          {:line, 16_384}
+        ]
+      )
+    end
+
+    defp run(receiver, tag, service, timeout) do
+      port = __MODULE__.open(service, timeout)
+      deadline = System.monotonic_time(:millisecond) + timeout
+
+      try do
+        collect_reports(port, receiver, tag, service, deadline, nil, "")
+      after
+        close(port)
+      end
+    end
+
+    defp collect_reports(port, receiver, tag, service, deadline, idle_deadline, buffer) do
+      next_deadline = min(deadline, idle_deadline || deadline)
+      wait = max(next_deadline - System.monotonic_time(:millisecond), 0)
+
+      if wait > 0 do
+        receive do
+          {^port, {:data, {:eol, line}}} ->
+            idle_deadline = handle_report(buffer <> line, receiver, tag, service, idle_deadline)
+            collect_reports(port, receiver, tag, service, deadline, idle_deadline, "")
+
+          {^port, {:data, {:noeol, fragment}}} ->
+            collect_reports(
+              port,
+              receiver,
+              tag,
+              service,
+              deadline,
+              idle_deadline,
+              buffer <> fragment
+            )
+
+          {^port, {:exit_status, _status}} ->
+            :ok
+        after
+          wait -> :ok
+        end
+      end
+    end
+
+    defp handle_report(line, receiver, tag, service, idle_deadline) do
+      regex = ~r/Add\s+\d+\s+\d+\s+\S+\s+#{Regex.escape(service)}\.\s+(.+)$/
+
+      case Regex.run(regex, line) do
+        [_, name] ->
+          send(receiver, {tag, {:report, String.trim(name)}})
+          System.monotonic_time(:millisecond) + @idle_timeout
+
+        _ ->
+          idle_deadline
+      end
+    end
+
+    defp close(port) do
+      if is_port(port) && Port.info(port), do: Port.close(port)
+      :ok
+    end
+
+    defp timeout_arg(timeout), do: to_string(max(timeout, 1) / 1000)
+  end
+
   @doc """
   Discover devices advertising a specific mDNS service
   """
   @spec discover_service(String.t(), non_neg_integer()) :: [map()]
   def discover_service(service, timeout) do
-    timeout_secs = max(div(timeout, 1000), 1)
+    {monitor, tag} = Browser.start(service, timeout)
 
-    {output, _} =
-      System.cmd("timeout", [to_string(timeout_secs), "dns-sd", "-B", service],
-        stderr_to_stdout: true
-      )
-
-    output
-    |> String.split("\n")
-    |> Enum.flat_map(fn line ->
-      case Regex.run(~r/Add\s+\d+\s+\d+\s+\S+\s+#{Regex.escape(service)}\.\s+(.+)$/, line) do
-        [_, name] -> [String.trim(name)]
-        _ -> []
-      end
-    end)
-    |> Task.async_stream(&resolve_device(&1, service),
-      max_concurrency: 10,
-      timeout: div(timeout, 1000) * 1000,
-      on_timeout: :kill_task
-    )
-    |> Enum.flat_map(fn
-      {:ok, device} -> [device]
-      _ -> []
-    end)
+    monitor
+    |> collect_resolutions(tag, service, [])
+    |> Enum.reverse()
+    |> Task.await_many(:infinity)
   end
 
   defp resolve_device(name, service) do
@@ -54,6 +129,20 @@ defmodule NervesDiscovery.MacOS do
 
       _ ->
         new_device(name, name, [])
+    end
+  end
+
+  defp collect_resolutions(monitor, tag, service, tasks) do
+    receive do
+      {^tag, {:report, name}} ->
+        task = Task.async(fn -> resolve_device(name, service) end)
+        collect_resolutions(monitor, tag, service, [task | tasks])
+
+      {:DOWN, ^monitor, :process, _pid, :normal} ->
+        tasks
+
+      {:DOWN, ^monitor, :process, _pid, reason} ->
+        exit(reason)
     end
   end
 

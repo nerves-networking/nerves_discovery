@@ -3,4 +3,5 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 Mimic.copy(System)
+Mimic.copy(NervesDiscovery.MacOS.Browser)
 ExUnit.start()
