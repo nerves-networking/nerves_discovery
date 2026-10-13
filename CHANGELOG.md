@@ -7,6 +7,11 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.6
+
+* Fixes
+  * For the generic mDNS backend, filter out off-link unicast responses
+
 ## v0.1.5
 
 * Fixes
