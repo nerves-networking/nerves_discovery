@@ -12,7 +12,11 @@ defmodule NervesDiscovery do
   @typedoc """
   Options for `discover/1`
   """
-  @type options() :: [timeout: non_neg_integer(), method: :auto | :macos | :avahi | :generic]
+  @type options() :: [
+          timeout: non_neg_integer(),
+          method: :auto | :macos | :avahi | :generic,
+          all: boolean()
+        ]
 
   @typedoc """
   Information about each found Nerves device
@@ -29,6 +33,9 @@ defmodule NervesDiscovery do
   * `:architecture` - the device's CPU architecture if included in the advertisement
   * `:author` - the device's firmware author if included in the advertisement
   * `:uuid` - the device's firmware UUID if included in the advertisement
+  * `:nerves?` - whether the device looks like a Nerves device, either by advertising
+    `_nerves-device._tcp` or by having a name that starts with "nerves". Only `false`
+    when `all: true` is passed to `discover/1`.
   """
   @type result() :: %{
           name: String.t(),
@@ -42,7 +49,8 @@ defmodule NervesDiscovery do
           platform: String.t() | nil,
           architecture: String.t() | nil,
           author: String.t() | nil,
-          uuid: String.t() | nil
+          uuid: String.t() | nil,
+          nerves?: boolean()
         }
 
   @doc """
@@ -51,6 +59,9 @@ defmodule NervesDiscovery do
   Options:
   * `:timeout` - timeout in milliseconds to wait for replies (default 5000 ms)
   * `:method` - method to use for querying mDNS (`:auto`, `:macos`, `:avahi`, `:generic`)
+  * `:all` - include every device advertising SSH, not only those with Nerves-like
+    names (default `false`). This can return many non-Nerves devices, which have
+    `nerves?: false`.
 
   ## Examples
 
@@ -61,20 +72,27 @@ defmodule NervesDiscovery do
   def discover(opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 5000)
     discover = discover_fun(Keyword.get(opts, :method, :auto))
+    all? = Keyword.get(opts, :all, false)
 
     [
-      Task.async(fn -> discover.("_ssh._tcp", timeout) |> filter_nerves() end),
-      Task.async(fn -> discover.("_nerves-device._tcp", timeout) end)
+      Task.async(fn -> discover.("_ssh._tcp", timeout) |> filter_nerves(all?) end),
+      Task.async(fn ->
+        discover.("_nerves-device._tcp", timeout) |> Enum.map(&Map.put(&1, :nerves?, true))
+      end)
     ]
     |> Task.await_many(timeout + 1000)
     |> then(fn [ssh, nerves] -> merge_devices(nerves ++ ssh) end)
   end
 
-  defp filter_nerves(results) do
-    Enum.filter(results, fn r ->
-      String.starts_with?(r.hostname, "nerves-") ||
-        String.starts_with?(r.name, ["nerves", "Nerves"])
-    end)
+  defp filter_nerves(results, all?) do
+    results
+    |> Enum.map(&Map.put(&1, :nerves?, nerves_name?(&1)))
+    |> Enum.filter(&(all? or &1.nerves?))
+  end
+
+  defp nerves_name?(result) do
+    String.starts_with?(result.hostname, "nerves-") ||
+      String.starts_with?(result.name, ["nerves", "Nerves"])
   end
 
   defp discover_fun(:auto) do
@@ -118,6 +136,7 @@ defmodule NervesDiscovery do
   defp merge_device(existing, incoming) do
     existing
     |> Map.put(:addresses, existing.addresses ++ incoming.addresses)
+    |> Map.put(:nerves?, existing.nerves? or incoming.nerves?)
     |> merge_txt_fields(incoming)
   end
 

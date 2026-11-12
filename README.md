@@ -44,7 +44,9 @@ sudo dnf install avahi-tools
 ## Usage
 
 Calling `NervesDiscovery.discover/1` with no options should result in a good
-list of what's available. See the options to change the wait time.
+list of what's available. See the options to change the wait time. Pass
+`all: true` to also include devices advertising SSH whose names don't start with
+"nerves".
 
 ```elixir
 iex> NervesDiscovery.discover()
@@ -60,12 +62,14 @@ iex> NervesDiscovery.discover()
     hostname: "nerves-8465.local",
     platform: "rpi4",
     architecture: "arm",
-    uuid: "28a2e0e8-2166-5ff2-f24e-a42564cf9bc4"
+    uuid: "28a2e0e8-2166-5ff2-f24e-a42564cf9bc4",
+    nerves?: true
   },
   %{
     name: "nerves-0316",
     addresses: [{192, 168, 7, 128}],
     hostname: "nerves-0316.local",
+    nerves?: true
   }
 ]
 ```
