@@ -12,7 +12,11 @@ defmodule NervesDiscovery do
   @typedoc """
   Options for `discover/1`
   """
-  @type options() :: [timeout: non_neg_integer(), method: :auto | :macos | :avahi | :generic]
+  @type options() :: [
+          timeout: non_neg_integer(),
+          method: :auto | :macos | :avahi | :generic,
+          filter: nil | atom()
+        ]
 
   @typedoc """
   Information about each found Nerves device
@@ -29,6 +33,9 @@ defmodule NervesDiscovery do
   * `:architecture` - the device's CPU architecture if included in the advertisement
   * `:author` - the device's firmware author if included in the advertisement
   * `:uuid` - the device's firmware UUID if included in the advertisement
+  * `:tags` - list of atom tags describing the device. Currently this is either
+    `[:nerves]` for devices that advertise `_nerves-device._tcp` or have a name
+    that starts with "nerves", or `[]` for other devices advertising SSH.
   """
   @type result() :: %{
           name: String.t(),
@@ -42,7 +49,8 @@ defmodule NervesDiscovery do
           platform: String.t() | nil,
           architecture: String.t() | nil,
           author: String.t() | nil,
-          uuid: String.t() | nil
+          uuid: String.t() | nil,
+          tags: [atom()]
         }
 
   @doc """
@@ -51,6 +59,9 @@ defmodule NervesDiscovery do
   Options:
   * `:timeout` - timeout in milliseconds to wait for replies (default 5000 ms)
   * `:method` - method to use for querying mDNS (`:auto`, `:macos`, `:avahi`, `:generic`)
+  * `:filter` - only return devices whose `:tags` include this atom, or `nil` to
+    return every device advertising SSH (default `:nerves`). Passing `nil` can
+    return many non-Nerves devices, which have `tags: []`.
 
   ## Examples
 
@@ -61,20 +72,37 @@ defmodule NervesDiscovery do
   def discover(opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 5000)
     discover = discover_fun(Keyword.get(opts, :method, :auto))
+    filter = filter_fun(Keyword.get(opts, :filter, :nerves))
 
     [
-      Task.async(fn -> discover.("_ssh._tcp", timeout) |> filter_nerves() end),
-      Task.async(fn -> discover.("_nerves-device._tcp", timeout) end)
+      Task.async(fn -> discover_service(discover, "_ssh._tcp", timeout, &tag_ssh_device/1) end),
+      Task.async(fn ->
+        discover_service(discover, "_nerves-device._tcp", timeout, &add_tag(&1, :nerves))
+      end)
     ]
     |> Task.await_many(timeout + 1000)
     |> then(fn [ssh, nerves] -> merge_devices(nerves ++ ssh) end)
+    |> Enum.filter(filter)
   end
 
-  defp filter_nerves(results) do
-    Enum.filter(results, fn r ->
-      String.starts_with?(r.hostname, "nerves-") ||
-        String.starts_with?(r.name, ["nerves", "Nerves"])
-    end)
+  defp filter_fun(nil), do: fn _device -> true end
+  defp filter_fun(tag) when is_atom(tag), do: fn device -> tag in device.tags end
+
+  defp discover_service(discover, service, timeout, tag_fun) do
+    discover.(service, timeout)
+    |> Enum.map(&Map.put(&1, :tags, []))
+    |> Enum.map(tag_fun)
+  end
+
+  defp tag_ssh_device(result) do
+    if nerves_name?(result), do: add_tag(result, :nerves), else: result
+  end
+
+  defp add_tag(result, tag), do: Map.update!(result, :tags, &[tag | &1])
+
+  defp nerves_name?(result) do
+    String.starts_with?(result.hostname, "nerves-") ||
+      String.starts_with?(result.name, ["nerves", "Nerves"])
   end
 
   defp discover_fun(:auto) do
@@ -118,6 +146,7 @@ defmodule NervesDiscovery do
   defp merge_device(existing, incoming) do
     existing
     |> Map.put(:addresses, existing.addresses ++ incoming.addresses)
+    |> Map.put(:tags, Enum.uniq(existing.tags ++ incoming.tags))
     |> merge_txt_fields(incoming)
   end
 
