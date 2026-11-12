@@ -75,7 +75,8 @@ defmodule NervesDiscoveryTest do
                  product: "Product",
                  serial: "ABC123",
                  uuid: "182c7114-4fa2-5faf-904b-cdc94e6845bb",
-                 version: "1.2.3"
+                 version: "1.2.3",
+                 tags: [:nerves]
                }
              ]
     end
@@ -206,6 +207,51 @@ defmodule NervesDiscoveryTest do
       assert device.name == "nerves-9999"
       assert device.addresses == [{10, 0, 0, 50}]
       assert device.serial == "GHI789"
+    end
+
+    test "includes and tags SSH devices with non-Nerves names when filter: nil" do
+      ssh_browse = """
+      Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+      12:30:45.456  Add        2   4 local.               _ssh._tcp.           nerves-1234
+      12:30:45.789  Add        2   4 local.               _ssh._tcp.           printer
+      12:30:45.999  Add        2   4 local.               _ssh._tcp.           thermostat
+      """
+
+      nerves_browse = """
+      Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+      12:30:45.456  Add        2   4 local.               _nerves-device._tcp. thermostat
+      """
+
+      stub(System, :cmd, fn cmd, args, _opts ->
+        case {cmd, args} do
+          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
+            {ssh_browse, 0}
+
+          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
+            {nerves_browse, 0}
+
+          {"timeout", [_, "dns-sd", "-L", name, service]} ->
+            {"#{name}.#{service}.local. can be reached at #{name}.local.:22\n", 0}
+
+          {"timeout", [_, "dns-sd", "-G", "v4", hostname]} ->
+            {"12:30:46.456  Add     2  4 #{hostname}.  192.168.1.100  120\n", 0}
+        end
+      end)
+
+      tags = fn opts ->
+        NervesDiscovery.discover([method: :macos] ++ opts)
+        |> Map.new(&{&1.name, &1.tags})
+      end
+
+      assert tags.([]) == %{"nerves-1234" => [:nerves], "thermostat" => [:nerves]}
+      assert tags.(filter: :nerves) == tags.([])
+      assert tags.(filter: :other) == %{}
+
+      assert tags.(filter: nil) == %{
+               "nerves-1234" => [:nerves],
+               "printer" => [],
+               "thermostat" => [:nerves]
+             }
     end
   end
 end
