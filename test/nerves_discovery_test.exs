@@ -75,7 +75,8 @@ defmodule NervesDiscoveryTest do
                  product: "Product",
                  serial: "ABC123",
                  uuid: "182c7114-4fa2-5faf-904b-cdc94e6845bb",
-                 version: "1.2.3"
+                 version: "1.2.3",
+                 nerves?: true
                }
              ]
     end
@@ -206,6 +207,49 @@ defmodule NervesDiscoveryTest do
       assert device.name == "nerves-9999"
       assert device.addresses == [{10, 0, 0, 50}]
       assert device.serial == "GHI789"
+    end
+
+    test "includes and flags SSH devices with non-Nerves names when all: true" do
+      ssh_browse = """
+      Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+      12:30:45.456  Add        2   4 local.               _ssh._tcp.           nerves-1234
+      12:30:45.789  Add        2   4 local.               _ssh._tcp.           printer
+      12:30:45.999  Add        2   4 local.               _ssh._tcp.           thermostat
+      """
+
+      nerves_browse = """
+      Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+      12:30:45.456  Add        2   4 local.               _nerves-device._tcp. thermostat
+      """
+
+      stub(System, :cmd, fn cmd, args, _opts ->
+        case {cmd, args} do
+          {"timeout", [_, "dns-sd", "-B", "_ssh._tcp"]} ->
+            {ssh_browse, 0}
+
+          {"timeout", [_, "dns-sd", "-B", "_nerves-device._tcp"]} ->
+            {nerves_browse, 0}
+
+          {"timeout", [_, "dns-sd", "-L", name, service]} ->
+            {"#{name}.#{service}.local. can be reached at #{name}.local.:22\n", 0}
+
+          {"timeout", [_, "dns-sd", "-G", "v4", hostname]} ->
+            {"12:30:46.456  Add     2  4 #{hostname}.  192.168.1.100  120\n", 0}
+        end
+      end)
+
+      flags = fn opts ->
+        NervesDiscovery.discover([method: :macos] ++ opts)
+        |> Map.new(&{&1.name, &1.nerves?})
+      end
+
+      assert flags.([]) == %{"nerves-1234" => true, "thermostat" => true}
+
+      assert flags.(all: true) == %{
+               "nerves-1234" => true,
+               "printer" => false,
+               "thermostat" => true
+             }
     end
   end
 end
