@@ -4,7 +4,7 @@
 defmodule NervesDiscovery.MixProject do
   use Mix.Project
 
-  @version "0.1.6"
+  @version "0.1.7"
   @description "Discover Nerves devices using mDNS"
   @source_url "https://github.com/nerves-networking/nerves_discovery"
 

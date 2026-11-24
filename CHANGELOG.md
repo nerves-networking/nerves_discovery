@@ -7,6 +7,12 @@
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.7
+
+* New features
+  * Allow callers to remove the Nerves filter and see all devices. The default
+    is still to only return Nerves devices.
+
 ## v0.1.6
 
 * Fixes
