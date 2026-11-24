@@ -1,5 +1,6 @@
 <!--
   SPDX-FileCopyrightText: 2025 Frank Hunleth
+  SPDX-FileCopyrightText: 2026 Lars Wikman
   SPDX-License-Identifier: CC-BY-4.0
 -->
 
